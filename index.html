@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Online Food Order — Demo</title>
+  <style>
+    :root{--bg:#0f1724;--card:#0b1220;--muted:#9aa4b2;--accent:#ff6b35;--glass: rgba(255,255,255,0.04)}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial;background:linear-gradient(180deg,#071127 0%, #081427 100%);color:#e6eef6;min-height:100vh}
+    .container{max-width:1100px;margin:28px auto;padding:20px}
+
+    header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+    header h1{font-size:20px;margin:0}
+    header .brand{display:flex;gap:12px;align-items:center}
+    .logo{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,#ff9a66,#ff6b35);display:flex;align-items:center;justify-content:center;font-weight:700;color:#0b1220}
+
+    .grid{display:grid;grid-template-columns:1fr 360px;gap:18px}
+
+    .menu{background:var(--card);padding:18px;border-radius:12px;box-shadow:0 6px 18px rgba(2,6,23,0.6)}
+    .menu .list{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+    .item{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:12px;border-radius:10px;display:flex;gap:12px;align-items:center}
+    .thumb{width:76px;height:64px;border-radius:8px;background:var(--glass);display:flex;align-items:center;justify-content:center;font-weight:600;color:var(--muted)}
+    .meta{flex:1}
+    .meta h3{margin:0;font-size:16px}
+    .meta p{margin:6px 0 0 0;color:var(--muted);font-size:13px}
+    .meta .price{margin-top:8px;font-weight:700}
+    .controls{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+    .btn{background:var(--accent);border:none;padding:8px 12px;border-radius:8px;color:#071127;font-weight:700;cursor:pointer}
+    .btn.small{padding:6px 8px;font-size:13px}
+
+    /* Cart */
+    .cart{background:var(--card);padding:16px;border-radius:12px;position:sticky;top:28px;height:calc(100vh - 56px);overflow:auto}
+    .cart h2{margin:0 0 12px 0}
+    .cart-list{display:flex;flex-direction:column;gap:10px}
+    .cart-row{display:flex;justify-content:space-between;gap:8px;padding:8px;border-radius:8px;background:rgba(255,255,255,0.02)}
+    .cart-row .qty{display:flex;gap:6px;align-items:center}
+    .muted{color:var(--muted);font-size:13px}
+
+    .summary{margin-top:12px;padding-top:12px;border-top:1px dashed rgba(255,255,255,0.04)}
+    .summary .line{display:flex;justify-content:space-between;margin:8px 0}
+    .checkout{width:100%;margin-top:12px}
+
+    /* Modal / form */
+    .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,0.6);z-index:40}
+    .modal.active{display:flex}
+    .modal-card{width:420px;background:linear-gradient(180deg,#07162a,#081127);padding:18px;border-radius:12px}
+    .field{display:flex;flex-direction:column;margin-bottom:10px}
+    label{font-size:13px;color:var(--muted);margin-bottom:6px}
+    input,textarea,select{background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);padding:10px;border-radius:8px;color:inherit}
+    textarea{resize:vertical}
+
+    footer{margin-top:18px;color:var(--muted);font-size:13px;text-align:center}
+
+    @media (max-width:880px){.grid{grid-template-columns:1fr}.cart{height:auto;position:static}}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <div class="logo">FO</div>
+        <div>
+          <h1>Food Express — Order Online</h1>
+          <div class="muted">Fresh meals · Fast delivery</div>
+        </div>
+      </div>
+      <div class="muted">Demo checkout — no real payments</div>
+    </header>
+
+    <div class="grid">
+      <main class="menu">
+        <h2>Menu</h2>
+        <div class="list" id="menuList"></div>
+      </main>
+
+      <aside class="cart">
+        <h2>Your Cart</h2>
+        <div class="cart-list" id="cartList">
+          <div class="muted">Cart is empty — add items from the menu.</div>
+        </div>
+
+        <div class="summary" id="summary" style="display:none">
+          <div class="line"><div>Subtotal</div><div id="subtotal">₹0.00</div></div>
+          <div class="line"><div>Delivery</div><div id="delivery">₹40.00</div></div>
+          <div class="line" style="font-weight:800"><div>Total</div><div id="total">₹0.00</div></div>
+          <button class="btn checkout" id="checkoutBtn">Checkout</button>
+        </div>
+      </aside>
+    </div>
+
+    <footer>Built for demo — adapt for real backend & payment integration.</footer>
+  </div>
+
+  <div class="modal" id="modal">
+    <div class="modal-card">
+      <h3 style="margin-top:0">Checkout</h3>
+      <form id="orderForm">
+        <div class="field"><label for="name">Full name</label><input id="name" required placeholder="Your name" /></div>
+        <div class="field"><label for="phone">Phone</label><input id="phone" required placeholder="+91 9XXXXXXXXX" /></div>
+        <div class="field"><label for="address">Delivery address</label><textarea id="address" rows="3" required placeholder="Street, city, zip"></textarea></div>
+        <div class="field"><label for="payment">Payment method</label>
+          <select id="payment">
+            <option>Cash on delivery</option>
+            <option>UPI (demo)</option>
+            <option>Card (demo)</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+          <button type="button" class="btn small" id="cancelBtn">Cancel</button>
+          <button class="btn" type="submit">Place order</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Sample menu data
+    const menu = [
+      {id:1,name:'Margherita Pizza',desc:'Classic cheese pizza',price:299},
+      {id:2,name:'Paneer Butter Masala',desc:'Creamy paneer curry with naan',price:229},
+      {id:3,name:'Veg Biryani',desc:'Spiced basmati rice with veggies',price:179},
+      {id:4,name:'Grilled Chicken',desc:'Juicy grilled chicken with herbs',price:349},
+      {id:5,name:'French Fries',desc:'Crispy salted fries',price:89},
+      {id:6,name:'Chocolate Brownie',desc:'Warm chocolate brownie',price:99}
+    ];
+
+    const state = {cart:{},delivery:40};
+
+    function format(v){return '₹'+v.toFixed(2)}
+
+    function renderMenu(){
+      const el = document.getElementById('menuList');
+      el.innerHTML = '';
+      menu.forEach(it=>{
+        const div = document.createElement('div'); div.className='item';
+        div.innerHTML = `
+          <div class="thumb">${it.name.split(' ').slice(0,2).map(x=>x[0]).join('')}</div>
+          <div class="meta">
+            <h3>${it.name}</h3>
+            <p>${it.desc}</p>
+            <div class="price">${format(it.price)}</div>
+          </div>
+          <div class="controls">
+            <button class="btn small" data-id="${it.id}">Add</button>
+          </div>
+        `;
+        el.appendChild(div);
+      });
+
+      // attach handlers
+      document.querySelectorAll('.btn.small').forEach(btn=>{
+        btn.addEventListener('click',e=>{
+          const id = Number(btn.getAttribute('data-id'));
+          addToCart(id);
+        });
+      });
+    }
+
+    function addToCart(id){
+      const item = menu.find(m=>m.id===id);
+      if(!item) return;
+      if(state.cart[id]) state.cart[id].qty++;
+      else state.cart[id] = { ...item, qty:1 };
+      renderCart();
+    }
+
+    function changeQty(id, delta){
+      if(!state.cart[id]) return;
+      state.cart[id].qty += delta;
+      if(state.cart[id].qty <= 0) delete state.cart[id];
+      renderCart();
+    }
+
+    function renderCart(){
+      const list = document.getElementById('cartList');
+      list.innerHTML='';
+      const keys = Object.keys(state.cart);
+      if(keys.length===0){
+        list.innerHTML = '<div class="muted">Cart is empty — add items from the menu.</div>';
+        document.getElementById('summary').style.display='none';
+        return;
+      }
+      let subtotal = 0;
+      keys.forEach(k=>{
+        const it = state.cart[k]; subtotal += it.price*it.qty;
+        const row = document.createElement('div'); row.className='cart-row';
+        row.innerHTML = `
+          <div>
+            <div style="font-weight:700">${it.name}</div>
+            <div class="muted">${format(it.price)} × ${it.qty}</div>
+          </div>
+          <div class="qty">
+            <button class="btn small" data-action="dec" data-id="${it.id}">-</button>
+            <div style="align-self:center">${it.qty}</div>
+            <button class="btn small" data-action="inc" data-id="${it.id}">+</button>
+          </div>
+        `;
+        list.appendChild(row);
+      });
+      document.getElementById('subtotal').textContent = format(subtotal);
+      document.getElementById('delivery').textContent = format(state.delivery);
+      document.getElementById('total').textContent = format(subtotal + state.delivery);
+      document.getElementById('summary').style.display='block';
+
+      // attach qty handlers
+      document.querySelectorAll('[data-action]').forEach(b=>{
+        b.onclick = ()=>{
+          const id = Number(b.getAttribute('data-id'));
+          const act = b.getAttribute('data-action');
+          if(act==='inc') changeQty(id,1);
+          else changeQty(id,-1);
+        }
+      });
+    }
+
+    // Checkout modal
+    const modal = document.getElementById('modal');
+    document.getElementById('checkoutBtn').addEventListener('click', ()=>{
+      modal.classList.add('active');
+    });
+    document.getElementById('cancelBtn').addEventListener('click', ()=>{
+      modal.classList.remove('active');
+    });
+
+    document.getElementById('orderForm').addEventListener('submit', e=>{
+      e.preventDefault();
+      const name = document.getElementById('name').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      const address = document.getElementById('address').value.trim();
+      const payment = document.getElementById('payment').value;
+
+      const items = Object.values(state.cart).map(it=>({name:it.name, qty:it.qty, price:it.price}));
+      if(items.length===0){ alert('Cart is empty'); return; }
+
+      const subtotal = Object.values(state.cart).reduce((s,i)=>s+i.price*i.qty,0);
+      const order = {name,phone,address,payment,items,subtotal,delivery:state.delivery,total:subtotal+state.delivery,createdAt:new Date().toISOString()};
+
+      // In real app: send order to server via fetch()/AJAX and handle response.
+      console.log('Order payload (demo):', order);
+      modal.classList.remove('active');
+      alert('Order placed! (demo)\nCheck console for payload.');
+
+      // clear cart
+      state.cart = {};
+      renderCart();
+      document.getElementById('orderForm').reset();
+    });
+
+    // init
+    renderMenu();
+    renderCart();
+  </script>
+</body>
+</html>
